@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AgendaAI{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Bienvenida, {{ user.name }} — {{ today.strftime('%A, %d de %B de %Y') }}{% endblock %}
+
+{% block content %}
+<div class="page-body">
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+      <div class="stat-num">{{ total }}</div>
+      <div class="stat-lbl">Total tareas</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="stat-num">{{ done }}</div>
+      <div class="stat-lbl">Completadas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div class="stat-num">{{ total - done }}</div>
+      <div class="stat-lbl">Pendientes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+      <div class="stat-num">{{ high }}</div>
+      <div class="stat-lbl">Alta prioridad</div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <!-- Tareas urgentes -->
+    <div>
+      <div class="section-head">
+        <span class="section-title">Tareas urgentes</span>
+        <a href="{{ url_for('tasks') }}" class="filter-btn">Ver todas</a>
+      </div>
+      <div class="tasks-grid">
+        {% set urgent = tasks | selectattr('done', 'equalto', false) | selectattr('priority', 'equalto', 'alta') | list %}
+        {% if urgent %}
+          {% for task in urgent[:5] %}
+          <div class="task-card" id="task-{{ task.id }}">
+            <div class="task-checkbox {% if task.done %}checked{% endif %}" onclick="toggleTask({{ task.id }}, this)"></div>
+            <div class="task-body">
+              <div class="task-title {% if task.done %}done{% endif %}">{{ task.title }}</div>
+              {% if task.description %}
+              <div class="task-desc">{{ task.description[:80] }}{% if task.description|length > 80 %}...{% endif %}</div>
+              {% endif %}
+              <div class="task-meta">
+                <span class="tag tag-{{ task.priority }}">{{ task.priority }}</span>
+                {% if task.due_date %}<span class="task-due">{{ task.due_date.strftime('%d/%m') }}{% if task.due_time %} {{ task.due_time }}{% endif %}</span>{% endif %}
+                <span class="tag tag-meet">{{ task.category }}</span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">🎉</div>
+            No hay tareas urgentes pendientes
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Tareas de hoy -->
+      <div class="section-head" style="margin-top:24px">
+        <span class="section-title">Otras tareas de hoy</span>
+      </div>
+      <div class="tasks-grid">
+        {% set today_tasks = tasks | selectattr('done', 'equalto', false) | selectattr('priority', 'ne', 'alta') | list %}
+        {% if today_tasks %}
+          {% for task in today_tasks[:4] %}
+          <div class="task-card" id="task-{{ task.id }}">
+            <div class="task-checkbox {% if task.done %}checked{% endif %}" onclick="toggleTask({{ task.id }}, this)"></div>
+            <div class="task-body">
+              <div class="task-title">{{ task.title }}</div>
+              <div class="task-meta">
+                <span class="tag tag-{{ task.priority }}">{{ task.priority }}</span>
+                {% if task.due_date %}<span class="task-due">{{ task.due_date.strftime('%d/%m') }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state" style="padding:16px">Sin más tareas pendientes</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Panel derecho -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <!-- Eventos hoy -->
+      <div class="card">
+        <div class="card-title">Eventos de hoy</div>
+        <div class="today-events">
+          {% if events_today %}
+            {% for ev in events_today %}
+            <div class="event-row">
+              <div class="event-time">{{ ev.start_time }}</div>
+              <div class="event-dot" style="background:{% if ev.color == 'meet' %}#7B5EA7{% elif ev.color == 'dead' %}#D4537E{% elif ev.color == 'task' %}#1D9E75{% else %}#888780{% endif %}"></div>
+              <div>
+                <div class="event-title">{{ ev.title }}</div>
+                {% if ev.description %}<div class="task-desc">{{ ev.description[:50] }}</div>{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state" style="padding:16px">
+              <div>Sin eventos hoy</div>
+              <a href="{{ url_for('calendar') }}" class="filter-btn" style="margin-top:10px;display:inline-block">Añadir evento</a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Acceso rápido IA -->
+      <div class="card-purple">
+        <div class="card-title-w">Asistente IA</div>
+        <p style="color:rgba(255,255,255,.8);font-size:13px;font-weight:600;margin-bottom:16px">Organiza tu día automáticamente con inteligencia artificial</p>
+        <a href="{{ url_for('ai_assistant') }}" class="add-btn-pill" style="background:#FF6B9D;box-shadow:0 3px 0 #D4537E;width:100%;justify-content:center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          Abrir asistente
+        </a>
+      </div>
+
+      <!-- Accesos rápidos -->
+      <div class="card">
+        <div class="card-title">Acciones rápidas</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <a href="{{ url_for('tasks') }}" class="filter-btn" style="display:block;text-align:center">+ Nueva tarea</a>
+          <a href="{{ url_for('calendar') }}" class="filter-btn" style="display:block;text-align:center">+ Nuevo evento</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

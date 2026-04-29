@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Calendario — AgendaAI{% endblock %}
+{% block page_title %}Calendario{% endblock %}
+{% block page_sub %}Visualiza y organiza tus eventos y deadlines{% endblock %}
+
+{% block content %}
+<div class="page-body">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px;gap:10px">
+    <div class="filters-bar" style="margin-bottom:0" id="view-btns">
+      <button class="filter-btn active" onclick="setView('month', this)">Mes</button>
+      <button class="filter-btn" onclick="setView('week', this)">Semana</button>
+    </div>
+    <button class="add-btn-pill" onclick="openModal('modal-add-event')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo evento
+    </button>
+  </div>
+
+  <div class="calendar-wrap">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="navigate(-1)">&#8249;</button>
+      <span class="cal-nav-title" id="cal-title"></span>
+      <button class="cal-nav-btn" onclick="navigate(1)">&#8250;</button>
+    </div>
+    <div id="cal-days-header" class="cal-days-header"></div>
+    <div id="cal-grid" class="cal-grid"></div>
+    <!-- Week view -->
+    <div id="week-view" style="display:none">
+      <div id="week-header" style="display:grid;gap:0;border-bottom:2px solid var(--pink-pale)"></div>
+      <div id="week-body" style="overflow-y:auto;max-height:500px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal añadir evento -->
+<div class="modal-overlay" id="modal-add-event">
+  <div class="modal">
+    <div class="modal-title">Nuevo evento</div>
+    <form method="POST" action="/events/add">
+      <div class="form-group">
+        <label class="form-label">Título</label>
+        <input type="text" name="title" class="form-input" id="ev-title-inp" placeholder="Reunión, deadline, bloque..." required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <textarea name="description" class="form-textarea" placeholder="Detalles opcionales..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha</label>
+        <input type="date" name="event_date" class="form-input" id="ev-date-inp" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Hora inicio</label>
+          <input type="time" name="start_time" class="form-input" value="09:00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hora fin</label>
+          <input type="time" name="end_time" class="form-input" value="10:00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select name="color" class="form-select">
+          <option value="meet">Reunión</option>
+          <option value="dead">Deadline</option>
+          <option value="task">Tarea</option>
+          <option value="block">Bloque de trabajo</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal('modal-add-event')">Cancelar</button>
+        <button type="submit" class="add-btn-pill">Guardar evento</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+let curYear = new Date().getFullYear();
+let curMonth = new Date().getMonth();
+let curView = 'month';
+let weekOffset = 0;
+let eventsCache = {};
+
+function cacheKey(y, m) { return y + '-' + m; }
+
+async function loadEvents(year, month) {
+  const key = cacheKey(year, month);
+  if (eventsCache[key]) return eventsCache[key];
+  const res = await fetch(`/api/events?year=${year}&month=${month + 1}`);
+  const data = await res.json();
+  eventsCache[key] = data;
+  return data;
+}
+
+function colorClass(ev) {
+  if (ev.type === 'task') return 'ev-task-pill';
+  const map = { meet: 'ev-meet-pill', dead: 'ev-dead-pill', task: 'ev-task-pill', block: 'ev-block-pill' };
+  return map[ev.color] || 'ev-meet-pill';
+}
+function dotColor(ev) {
+  if (ev.type === 'task') return '#1D9E75';
+  const map = { meet: '#7B5EA7', dead: '#D4537E', block: '#888780' };
+  return map[ev.color] || '#7B5EA7';
+}
+
+async function renderMonth() {
+  document.getElementById('cal-grid').style.display = 'grid';
+  document.getElementById('week-view').style.display = 'none';
+
+  const title = `${MONTHS[curMonth]} ${curYear}`;
+  document.getElementById('cal-title').textContent = title;
+
+  const hdr = document.getElementById('cal-days-header');
+  hdr.style.display = 'grid';
+  hdr.innerHTML = DAYS_SHORT.map(d => `<div class="cal-dh">${d}</div>`).join('');
+
+  const events = await loadEvents(curYear, curMonth);
+  const evByDate = {};
+  events.forEach(ev => {
+    if (!evByDate[ev.date]) evByDate[ev.date] = [];
+    evByDate[ev.date].push(ev);
+  });
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const today = new Date();
+  const first = new Date(curYear, curMonth, 1);
+  let start = (first.getDay() + 6) % 7;
+  const total = new Date(curYear, curMonth + 1, 0).getDate();
+  const prevTotal = new Date(curYear, curMonth, 0).getDate();
+
+  for (let i = 0; i < start; i++) {
+    const d = prevTotal - start + 1 + i;
+    grid.innerHTML += `<div class="cal-cell other-month"><div class="cal-day-num">${d}</div></div>`;
+  }
+  for (let i = 1; i <= total; i++) {
+    const isToday = i === today.getDate() && curMonth === today.getMonth() && curYear === today.getFullYear();
+    const dateStr = `${curYear}-${String(curMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+    const dayEvs = evByDate[dateStr] || [];
+    let evHtml = dayEvs.slice(0, 3).map(ev =>
+      `<div class="cal-ev-pill ${colorClass(ev)}">${ev.title}</div>`
+    ).join('');
+    if (dayEvs.length > 3) evHtml += `<div class="cal-ev-pill ev-block-pill">+${dayEvs.length - 3} más</div>`;
+    grid.innerHTML += `<div class="cal-cell${isToday ? ' today' : ''}" onclick="openDayModal('${dateStr}')">
+      <div class="cal-day-num">${i}</div>${evHtml}</div>`;
+  }
+  const rem = 42 - start - total;
+  for (let i = 1; i <= rem; i++) {
+    grid.innerHTML += `<div class="cal-cell other-month"><div class="cal-day-num">${i}</div></div>`;
+  }
+}
+
+async function renderWeek() {
+  document.getElementById('cal-grid').style.display = 'none';
+  document.getElementById('week-view').style.display = 'block';
+  document.getElementById('cal-days-header').style.display = 'none';
+
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + weekOffset * 7);
+  const dates = Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d; });
+
+  const m1 = MONTHS[dates[0].getMonth()], m2 = MONTHS[dates[6].getMonth()];
+  document.getElementById('cal-title').textContent = m1 === m2 ? `${m1} ${dates[0].getFullYear()}` : `${m1} – ${m2} ${dates[0].getFullYear()}`;
+
+  const events = await loadEvents(curYear, curMonth);
+  const evByDate = {};
+  events.forEach(ev => {
+    if (!evByDate[ev.date]) evByDate[ev.date] = [];
+    evByDate[ev.date].push(ev);
+  });
+
+  const hdr = document.getElementById('week-header');
+  hdr.style.gridTemplateColumns = '56px repeat(7, 1fr)';
+  hdr.innerHTML = '<div style="padding:10px;border-right:1px solid var(--pink-pale)"></div>' +
+    dates.map((d, i) => {
+      const isToday = d.toDateString() === new Date().toDateString();
+      const dd = `<div style="font-size:${isToday ? '13px' : '16px'};font-weight:900;color:${isToday ? '#fff' : 'var(--purple)'};${isToday ? 'width:28px;height:28px;background:var(--purple);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto' : ''};">${d.getDate()}</div>`;
+      return `<div style="text-align:center;padding:10px 6px;border-right:1px solid var(--pink-pale)"><div style="font-size:11px;font-weight:800;color:var(--pink-dark);margin-bottom:4px">${DAYS_SHORT[i]}</div>${dd}</div>`;
+    }).join('');
+
+  const body = document.getElementById('week-body');
+  body.style.display = 'grid';
+  body.style.gridTemplateColumns = '56px repeat(7, 1fr)';
+  body.innerHTML = '';
+  for (let h = 7; h <= 20; h++) {
+    body.innerHTML += `<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-align:right;padding:4px 8px 0;height:52px;border-right:1px solid var(--pink-pale);border-bottom:1px solid var(--pink-pale)">${h}:00</div>`;
+    dates.forEach(d => {
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const dayEvs = (evByDate[ds] || []).filter(ev => ev.start && parseInt(ev.start.split(':')[0]) === h);
+      let inner = dayEvs.map(ev => `<div class="cal-ev-pill ${colorClass(ev)}" style="margin-bottom:2px">${ev.title}</div>`).join('');
+      body.innerHTML += `<div style="height:52px;border-right:1px solid var(--pink-pale);border-bottom:1px solid var(--pink-pale);padding:3px 4px;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--pink-pale)'" onmouseout="this.style.background=''" onclick="openDayModal('${ds}')">${inner}</div>`;
+    });
+  }
+}
+
+function openDayModal(dateStr) {
+  document.getElementById('ev-date-inp').value = dateStr;
+  openModal('modal-add-event');
+}
+
+function navigate(dir) {
+  if (curView === 'month') {
+    curMonth += dir;
+    if (curMonth > 11) { curMonth = 0; curYear++; }
+    if (curMonth < 0) { curMonth = 11; curYear--; }
+    renderMonth();
+  } else {
+    weekOffset += dir;
+    renderWeek();
+  }
+}
+
+function setView(v, btn) {
+  curView = v;
+  document.querySelectorAll('#view-btns .filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  weekOffset = 0;
+  if (v === 'month') renderMonth(); else renderWeek();
+}
+
+// Init with today's date in event modal
+document.getElementById('ev-date-inp').value = new Date().toISOString().split('T')[0];
+renderMonth();
+</script>
+{% endblock %}

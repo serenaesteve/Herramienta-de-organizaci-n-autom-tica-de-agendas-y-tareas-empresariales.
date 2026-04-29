@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Mi perfil — AgendaAI{% endblock %}
+{% block page_title %}Mi perfil{% endblock %}
+{% block page_sub %}Configura tu cuenta y preferencias{% endblock %}
+
+{% block content %}
+<div class="page-body">
+  <div style="max-width:560px">
+    {% if message %}
+    <div class="success-msg">{{ message }}</div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-title">Información personal</div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--pink);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;box-shadow:0 4px 0 var(--pink-dark)">
+          {{ user.name[0]|upper }}
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:900;color:var(--purple)">{{ user.name }}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-soft)">{{ user.email }}</div>
+          {% if user.company %}<div style="font-size:12px;font-weight:700;color:var(--pink-dark);margin-top:4px">{{ user.company }}</div>{% endif %}
+        </div>
+      </div>
+
+      <form method="POST">
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" name="name" class="form-input" value="{{ user.name }}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Empresa</label>
+          <input type="text" name="company" class="form-input" value="{{ user.company }}" placeholder="Nombre de tu empresa">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nueva contraseña (dejar vacío para no cambiar)</label>
+          <input type="password" name="new_password" class="form-input" placeholder="Nueva contraseña..." minlength="6">
+        </div>
+        <button type="submit" class="add-btn-pill" style="margin-top:8px">Guardar cambios</button>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Estadísticas de cuenta</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div style="text-align:center;padding:16px;background:var(--pink-pale);border-radius:var(--radius-sm);border:2px solid var(--pink-light)">
+          <div style="font-size:24px;font-weight:900;color:var(--purple)">{{ user.tasks|length }}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-soft);margin-top:4px">Tareas totales</div>
+        </div>
+        <div style="text-align:center;padding:16px;background:var(--pink-pale);border-radius:var(--radius-sm);border:2px solid var(--pink-light)">
+          <div style="font-size:24px;font-weight:900;color:var(--purple)">{{ user.tasks|selectattr('done')|list|length }}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-soft);margin-top:4px">Completadas</div>
+        </div>
+        <div style="text-align:center;padding:16px;background:var(--pink-pale);border-radius:var(--radius-sm);border:2px solid var(--pink-light)">
+          <div style="font-size:24px;font-weight:900;color:var(--purple)">{{ user.events|length }}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-soft);margin-top:4px">Eventos</div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px">
+        Cuenta creada: {{ user.created_at.strftime('%d/%m/%Y') }}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;border-color:#F09595">
+      <div class="card-title" style="color:#A32D2D">Zona de peligro</div>
+      <p style="font-size:13px;font-weight:600;color:var(--text-soft);margin-bottom:12px">Cerrar sesión eliminará tu sesión activa.</p>
+      <a href="{{ url_for('logout') }}" class="add-btn-pill" style="background:#E24B4A;box-shadow:0 3px 0 #A32D2D">Cerrar sesión</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

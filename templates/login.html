@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión — AgendaAI{% endblock %}
+{% block auth_content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="4" x2="8" y2="9"/><line x1="16" y1="4" x2="16" y2="9"/><rect x="7" y="13" width="4" height="4" rx="1" fill="#fff" stroke="none"/><rect x="13" y="13" width="4" height="4" rx="1" fill="#fff" stroke="none"/></svg>
+      </div>
+      <div class="auth-title">AgendaAI</div>
+      <div class="auth-sub">Organización empresarial inteligente</div>
+    </div>
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+    <form method="POST">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-input" placeholder="tu@empresa.com" required autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn-primary">Iniciar sesión</button>
+    </form>
+    <div class="auth-link">
+      ¿No tienes cuenta? <a href="{{ url_for('register') }}">Regístrate gratis</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Asistente IA — AgendaAI{% endblock %}
+{% block page_title %}Asistente IA{% endblock %}
+{% block page_sub %}Tu organizador inteligente con Ollama + LLaMA 3{% endblock %}
+
+{% block content %}
+<div class="page-body">
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+    <!-- Chat principal -->
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Acciones rápidas</div>
+        <div class="ai-quick-btns">
+          <button class="ai-quick-btn" onclick="quickAction('Organiza mis tareas pendientes por prioridad y dame un plan de trabajo para hoy')">Organizar mi día</button>
+          <button class="ai-quick-btn" onclick="quickAction('Analiza mi carga de trabajo y dime si estoy sobrecargado')">Analizar carga</button>
+          <button class="ai-quick-btn" onclick="quickAction('Dame 3 consejos de productividad empresarial para esta semana')">Consejos productividad</button>
+          <button class="ai-quick-btn" onclick="organizeAI()">Plan automático IA</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--pink);animation:pulse 2s infinite"></div>
+          <span class="card-title" style="margin-bottom:0">Chat con el asistente</span>
+        </div>
+        <div class="ai-chat-area" id="ai-chat-area">
+          <div class="ai-bubble assistant">
+            ¡Hola, {{ user.name }}! Soy tu asistente de organización empresarial. Puedo ayudarte a priorizar tareas, gestionar tu agenda, crear planes de trabajo y darte consejos de productividad. ¿En qué puedo ayudarte hoy?
+          </div>
+        </div>
+        <div class="ai-input-row">
+          <input type="text" class="ai-input" id="ai-input" placeholder="Escribe tu consulta... (Enter para enviar)">
+          <button class="ai-send-btn" onclick="sendAIMessage()">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel lateral -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card-purple">
+        <div class="card-title-w">Estado del asistente</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:#5DCAA5"></div>
+          <span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.9)">Ollama conectado</span>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.6);font-weight:600;line-height:1.6">
+          Modelo: LLaMA 3<br>
+          Motor: Ollama local<br>
+          Sin coste por consulta
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Sugerencias de uso</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          {% set tips = [
+            ('📊', 'Pide que analice tu carga de trabajo semanal'),
+            ('⏰', 'Solicita una estimación de tiempos para tus tareas'),
+            ('🎯', 'Pregunta cómo priorizar cuando todo parece urgente'),
+            ('📅', 'Pide que te cree un horario óptimo para tu jornada'),
+          ] %}
+          {% for icon, tip in tips %}
+          <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;font-weight:600;color:var(--text-soft)">
+            <span style="font-size:16px">{{ icon }}</span>
+            <span>{{ tip }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Configuración Ollama</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text-soft);line-height:2">
+          Asegúrate de tener Ollama activo:<br>
+          <code style="background:var(--pink-pale);padding:2px 8px;border-radius:6px;color:var(--purple);font-size:11px">ollama run llama3</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+<script>
+function quickAction(msg) {
+  document.getElementById('ai-input').value = msg;
+  sendAIMessage();
+}
+</script>
+{% endblock %}
